@@ -1,0 +1,131 @@
+<!-- Página básica mostrando status da água -->
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Monitoramento da Qualidade da Água</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/js/all.min.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            text-align: center;
+            margin: 20px;
+            background-color: #f4f4f4;
+        }
+        .container {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+            max-width: 600px;
+            margin: auto;
+        }
+        .status {
+            font-size: 24px;
+            font-weight: bold;
+            padding: 10px;
+            margin: 10px auto;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 8px;
+        }
+        .ok { background-color: #28a745; color: white; }
+        .poluida { background-color: #dc3545; color: white; }
+        .icon {
+            margin-right: 10px;
+        }
+        .btn {
+            margin-top: 20px;
+            padding: 10px 20px;
+            font-size: 16px;
+            border: none;
+            cursor: pointer;
+            border-radius: 5px;
+            background-color: #007bff;
+            color: white;
+        }
+        .btn:hover {
+            background-color: #0056b3;
+        }
+        select {
+            padding: 10px;
+            font-size: 16px;
+            margin-bottom: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Monitoramento da Qualidade da Água</h1>
+        <label for="caixaSelecionada">Selecionar Caixa d'Água:</label>
+        <select id="caixaSelecionada" onchange="carregarDados()">
+            <option value="caixa1">Caixa 1</option>
+            <option value="caixa2">Caixa 2</option>
+            <option value="caixa3">Caixa 3</option>
+        </select>
+        <div id="status" class="status ok">
+            <i class="icon fas fa-tint"></i>
+            <span>Água Limpa</span>
+        </div>
+        <p>Última atualização: <span id="ultimaAtualizacao">12/03/2025 14:30</span></p>
+        <canvas id="grafico"></canvas>
+        <button class="btn" onclick="carregarDados()"><i class="fas fa-sync-alt"></i> Atualizar</button>
+    </div>
+    
+    <script>
+        function carregarDados() {
+            const caixaSelecionada = document.getElementById("caixaSelecionada").value;
+            
+            // Dados mockados - Aqui seria feita a chamada à API ou banco de dados (DynamoDB)
+            const dados = {
+                qualidade: "OK", // "OK" ou "Poluída"
+                timestamp: new Date().toISOString(),
+                historico: [
+                    { timestamp: Date.now() - 60000, turbidez: 5, tds: 150 },
+                    { timestamp: Date.now() - 30000, turbidez: 7, tds: 160 },
+                    { timestamp: Date.now(), turbidez: 4, tds: 140 }
+                ]
+            };
+            
+            const qualidade = dados.qualidade;
+            document.getElementById("status").className = qualidade === "OK" ? "status ok" : "status poluida";
+            document.getElementById("status").innerHTML = `<i class="icon fas fa-tint"></i> ${qualidade === "OK" ? "Água Limpa" : "Água Poluída"}`;
+            document.getElementById("ultimaAtualizacao").textContent = new Date(dados.timestamp).toLocaleString();
+            desenharGrafico(dados.historico);
+        }
+        
+        function desenharGrafico(historico) {
+            const ctx = document.getElementById('grafico').getContext('2d');
+            new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: historico.map(d => new Date(d.timestamp).toLocaleTimeString()),
+                    datasets: [
+                        {
+                            label: 'Turbidez',
+                            data: historico.map(d => d.turbidez),
+                            backgroundColor: 'rgba(255, 99, 132, 0.5)'
+                        },
+                        {
+                            label: 'TDS (Sólidos Dissolvidos)',
+                            data: historico.map(d => d.tds),
+                            backgroundColor: 'rgba(54, 162, 235, 0.5)'
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    scales: {
+                        y: { beginAtZero: true }
+                    }
+                }
+            });
+        }
+        
+        carregarDados();
+    </script>
+</body>
+</html>

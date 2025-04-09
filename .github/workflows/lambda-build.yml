@@ -1,0 +1,19 @@
+name: Lambda CI
+
+on:
+  push:
+    branches: [ "dev" ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v2
+    - name: Instalar dependências
+      run: |
+        cd lambda
+        pip install -r requirements.txt -t build
+    - name: Gerar ZIP da Lambda
+      run: |
+        cd lambda
+        make zip
