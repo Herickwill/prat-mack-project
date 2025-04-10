@@ -1,3 +1,5 @@
+data "aws_caller_identity" "current" {}
+
 terraform {
   backend "s3" {
     bucket         = "terraform-state-agua-monitoramento-bucket"
@@ -7,6 +9,8 @@ terraform {
     encrypt        = true
   }
 }
+
+
 
 provider "aws" {
   region = "sa-east-1"
