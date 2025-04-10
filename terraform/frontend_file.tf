@@ -4,7 +4,6 @@ resource "aws_s3_object" "frontend_index" {
   source       = "${path.module}/../frontend/public/index.html"
   content_type = "text/html"
   etag         = filemd5("${path.module}/../frontend/public/index.html")
-  acl          = "public-read"
   tags = {
     Project = "agua-monitoramento"
   }
