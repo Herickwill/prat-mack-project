@@ -1,4 +1,4 @@
-name: Terraform Plan (feature/*)
+name: Terraform Plan (feature)
 
 on:
   pull_request:
