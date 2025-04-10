@@ -42,3 +42,21 @@ jobs:
 
       - name: Terraform Apply
         run: terraform apply -auto-approve
+
+      - name: Detectar Mudanças no Frontend
+        id: detect_index
+        run: |
+          if [ "${{ github.event.before }}" = "0000000000000000000000000000000000000000" ]; then
+            echo "Primeiro commit detectado — forçando upload."
+            echo "CHANGED=true" >> $GITHUB_OUTPUT
+          else
+            CHANGED=$(git diff --name-only ${{ github.event.before }} ${{ github.sha }} | grep -q 'frontend/public/index.html' && echo true || echo false)
+            echo "CHANGED=$CHANGED" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Fazendo upload do Frontend no S3
+        if: steps.detect_index.outputs.CHANGED == 'true'
+        run: |
+          aws s3 cp frontend/public/index.html s3://$S3_BUCKET_NAME/index.html --acl public-read
+        env:
+          S3_BUCKET_NAME: frontend-bucket-mackenzie-prat-prof
