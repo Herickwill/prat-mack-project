@@ -1,6 +1,17 @@
+terraform {
+  backend "s3" {
+    bucket         = "terraform-state-agua-monitoramento-bucket"
+    key            = "agua-iot/terraform.tfstate"
+    region         = "sa-east-1"
+    dynamodb_table = "terraform-state-lock"
+    encrypt        = true
+  }
+}
+
 provider "aws" {
   region = "sa-east-1"
 }
+
 
 resource "aws_s3_bucket" "frontend_bucket" {
   bucket = var.s3_bucket_name
