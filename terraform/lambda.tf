@@ -40,6 +40,8 @@ resource "aws_lambda_function" "agua_lambda" {
       SNS_TOPIC_ARN  = aws_sns_topic.alerta_agua.arn
     }
   }
+
+  kms_key_arn = aws_kms_key.lambda_env_key.arn
 }
 
 resource "aws_lambda_permission" "allow_iot" {
