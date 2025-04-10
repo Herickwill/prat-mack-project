@@ -8,9 +8,13 @@ resource "aws_s3_bucket" "frontend_bucket" {
   tags = {
     Name = "frontend-bucket"
   }
+}
 
-  website {
-    index_document = "index.html"
+resource "aws_s3_bucket_website_configuration" "frontend_website" {
+  bucket = aws_s3_bucket.frontend_bucket.id
+
+  index_document {
+    suffix = "index.html"
   }
 }
 
