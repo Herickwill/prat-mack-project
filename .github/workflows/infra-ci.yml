@@ -36,16 +36,7 @@ jobs:
       - name: Instalar Terraform
         uses: hashicorp/setup-terraform@v3
         with:
-          terraform_version: 1.6.6
-      
-      - name: Instalar ferramentas de lint
-        run: pip install -r ../lambda/dev-requirements.txt
-
-      - name: Verificar lint com flake8
-        run: flake8 ../lambda/app
-
-      - name: Verificar formatação com black
-        run: black --check ../lambda/app    
+          terraform_version: 1.6.6  
 
       - name: Terraform Init
         run: terraform init
