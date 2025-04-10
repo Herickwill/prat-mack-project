@@ -48,11 +48,9 @@ resource "aws_dynamodb_table" "agua_table" {
   name         = var.dynamodb_table_name
   billing_mode = "PAY_PER_REQUEST"
 
-  # Chaves principais
   hash_key  = "caixa_id"
   range_key = "timestamp"
 
-  # Definição das chaves
   attribute {
     name = "caixa_id"
     type = "S"
@@ -63,20 +61,11 @@ resource "aws_dynamodb_table" "agua_table" {
     type = "S"
   }
 
-  attribute {
-    name = "tds"
-    type = "N"
-  }
-
-  attribute {
-    name = "status"
-    type = "S"
-  }
-
   tags = {
     Name = "agua-table"
   }
 }
+
 
 
 resource "aws_sns_topic" "alerta_agua" {
