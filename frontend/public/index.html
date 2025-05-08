@@ -1,4 +1,3 @@
-<!-- Página básica mostrando status da água -->
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
@@ -19,21 +18,24 @@
             padding: 20px;
             border-radius: 10px;
             box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
-            max-width: 600px;
+            max-width: 800px;
             margin: auto;
         }
         .status {
             font-size: 24px;
             font-weight: bold;
-            padding: 10px;
-            margin: 10px auto;
+            padding: 15px;
+            margin: 20px auto;
             display: flex;
             align-items: center;
             justify-content: center;
             border-radius: 8px;
+            transition: all 0.3s ease;
         }
         .ok { background-color: #28a745; color: white; }
-        .poluida { background-color: #dc3545; color: white; }
+        .alerta-leve { background-color: #ffd700; color: black; }
+        .baixa-qualidade { background-color: #ff8c00; color: white; }
+        .contaminada { background-color: #dc3545; color: white; }
         .icon {
             margin-right: 10px;
         }
@@ -54,6 +56,42 @@
             padding: 10px;
             font-size: 16px;
             margin-bottom: 20px;
+            width: 250px;
+        }
+        .info-box {
+            display: flex;
+            justify-content: space-around;
+            margin: 20px 0;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+        .info-item {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 5px;
+            min-width: 150px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        #grafico {
+            max-height: 400px;
+            margin: 20px auto;
+        }
+        .legenda {
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+            margin: 15px 0;
+            flex-wrap: wrap;
+        }
+        .legenda-item {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+        .legenda-cor {
+            width: 20px;
+            height: 20px;
+            border-radius: 3px;
         }
     </style>
 </head>
@@ -62,70 +100,263 @@
         <h1>Monitoramento da Qualidade da Água</h1>
         <label for="caixaSelecionada">Selecionar Caixa d'Água:</label>
         <select id="caixaSelecionada" onchange="carregarDados()">
-            <option value="caixa1">Caixa 1</option>
-            <option value="caixa2">Caixa 2</option>
-            <option value="caixa3">Caixa 3</option>
+            <!-- Opções preenchidas dinamicamente -->
         </select>
+        
         <div id="status" class="status ok">
             <i class="icon fas fa-tint"></i>
-            <span>Água Limpa</span>
+            <span>Carregando dados...</span>
         </div>
-        <p>Última atualização: <span id="ultimaAtualizacao">12/03/2025 14:30</span></p>
+        
+        <div class="legenda">
+            <div class="legenda-item">
+                <div class="legenda-cor" style="background-color: #28a745"></div>
+                <span>≤ 150 - Água Potável</span>
+            </div>
+            <div class="legenda-item">
+                <div class="legenda-cor" style="background-color: #ffd700"></div>
+                <span>150-300 - Contaminação Leve</span>
+            </div>
+            <div class="legenda-item">
+                <div class="legenda-cor" style="background-color: #ff8c00"></div>
+                <span>300-500 - Baixa Qualidade</span>
+            </div>
+            <div class="legenda-item">
+                <div class="legenda-cor" style="background-color: #dc3545"></div>
+                <span>>500 - Contaminada</span>
+            </div>
+        </div>
+
+        <div class="info-box">
+            <div class="info-item">
+                <div>Última leitura</div>
+                <div id="ultimaLeitura">-</div>
+            </div>
+            <div class="info-item">
+                <div>Valor atual</div>
+                <div id="valorAtual">-</div>
+            </div>
+            <div class="info-item">
+                <div>Média (24h)</div>
+                <div id="mediaValores">-</div>
+            </div>
+        </div>
+        
+        <p>Última atualização: <span id="ultimaAtualizacao">-</span></p>
         <canvas id="grafico"></canvas>
         <button class="btn" onclick="carregarDados()"><i class="fas fa-sync-alt"></i> Atualizar</button>
     </div>
     
     <script>
-        function carregarDados() {
-            const caixaSelecionada = document.getElementById("caixaSelecionada").value;
-            
-            // Dados mockados - Aqui seria feita a chamada à API ou banco de dados (DynamoDB)
-            const dados = {
-                qualidade: "OK", // "OK" ou "Poluída"
-                timestamp: new Date().toISOString(),
-                historico: [
-                    { timestamp: Date.now() - 60000, turbidez: 5, tds: 150 },
-                    { timestamp: Date.now() - 30000, turbidez: 7, tds: 160 },
-                    { timestamp: Date.now(), turbidez: 4, tds: 140 }
-                ]
+        const apiBase = 'https://u56xlx934c.execute-api.sa-east-1.amazonaws.com/leituras';
+        let chartInstance = null;
+        let dadosCompletos = [];
+
+        // Função para determinar o status com base no valor do sensor
+        function determinarStatus(valor) {
+            if (valor <= 150) return { 
+                status: "ok", 
+                texto: "Água Limpa e Potável",
+                cor: "#28a745"
             };
+            if (valor <= 300) return { 
+                status: "alerta-leve", 
+                texto: "Água com Possível Contaminação Leve",
+                cor: "#ffd700"
+            };
+            if (valor <= 500) return { 
+                status: "baixa-qualidade", 
+                texto: "Água de Baixa Qualidade - Deve Ser Tratada",
+                cor: "#ff8c00"
+            };
+            return { 
+                status: "contaminada", 
+                texto: "Água Contaminada - Inadequada para Uso",
+                cor: "#dc3545"
+            };
+        }
+
+        // Função para formatar timestamp
+        function formatarData(timestamp) {
+            const date = new Date(timestamp * 1000);
+            return date.toLocaleString();
+        }
+
+        // Função para processar os dados brutos
+        function processarDados(dadosBrutos, caixaId) {
+            const dadosFiltrados = dadosBrutos.filter(item => item.caixa_id === caixaId);
             
-            const qualidade = dados.qualidade;
-            document.getElementById("status").className = qualidade === "OK" ? "status ok" : "status poluida";
-            document.getElementById("status").innerHTML = `<i class="icon fas fa-tint"></i> ${qualidade === "OK" ? "Água Limpa" : "Água Poluída"}`;
-            document.getElementById("ultimaAtualizacao").textContent = new Date(dados.timestamp).toLocaleString();
-            desenharGrafico(dados.historico);
+            if (dadosFiltrados.length === 0) return null;
+            
+            // Ordena por timestamp
+            dadosFiltrados.sort((a, b) => a.timestamp - b.timestamp);
+            
+            // Pega o último registro
+            const ultimoRegistro = dadosFiltrados[dadosFiltrados.length - 1];
+            
+            return {
+                caixa_id: caixaId,
+                historico: dadosFiltrados,
+                ultimoValor: ultimoRegistro.valor_sensor,
+                ultimoTimestamp: ultimoRegistro.timestamp,
+                media: calcularMedia(dadosFiltrados.map(item => item.valor_sensor))
+            };
+        }
+
+        function calcularMedia(valores) {
+            const soma = valores.reduce((a, b) => a + b, 0);
+            return (soma / valores.length).toFixed(2);
+        }
+
+        async function carregarDados() {
+            const select = document.getElementById("caixaSelecionada");
+            const caixaSelecionada = select.value;
+            
+            try {
+                if (dadosCompletos.length === 0) {
+                    const response = await fetch(apiBase);
+                    if (!response.ok) throw new Error('Erro ao carregar dados');
+                    dadosCompletos = await response.json();
+                    
+                    // Preenche o dropdown com caixas únicas
+                    const caixasUnicas = [...new Set(dadosCompletos.map(item => item.caixa_id))];
+                    select.innerHTML = caixasUnicas.map(caixa => 
+                        `<option value="${caixa}">${caixa.replace(/_/g, ' ')}</option>`
+                    ).join('');
+                }
+                
+                const dadosProcessados = processarDados(dadosCompletos, caixaSelecionada);
+                
+                if (!dadosProcessados) {
+                    throw new Error('Nenhum dado encontrado para esta caixa');
+                }
+                
+                // Atualiza a interface
+                const status = determinarStatus(dadosProcessados.ultimoValor);
+                const statusElement = document.getElementById("status");
+                statusElement.className = `status ${status.status}`;
+                statusElement.innerHTML = `<i class="icon fas fa-tint"></i> ${status.texto}`;
+                statusElement.style.backgroundColor = status.cor;
+                
+                document.getElementById("valorAtual").textContent = dadosProcessados.ultimoValor.toFixed(2);
+                document.getElementById("mediaValores").textContent = dadosProcessados.media;
+                document.getElementById("ultimaLeitura").textContent = formatarData(dadosProcessados.ultimoTimestamp);
+                document.getElementById("ultimaAtualizacao").textContent = new Date().toLocaleString();
+                
+                desenharGrafico(dadosProcessados.historico);
+            } catch (error) {
+                console.error('Erro:', error);
+                document.getElementById("status").className = "status contaminada";
+                document.getElementById("status").innerHTML = `<i class="icon fas fa-exclamation-triangle"></i> Erro ao carregar dados`;
+                document.getElementById("ultimaAtualizacao").textContent = "Erro";
+                
+                if (chartInstance) {
+                    chartInstance.destroy();
+                    chartInstance = null;
+                }
+            }
         }
         
         function desenharGrafico(historico) {
             const ctx = document.getElementById('grafico').getContext('2d');
-            new Chart(ctx, {
-                type: 'bar',
+            
+            if (chartInstance) {
+                chartInstance.destroy();
+            }
+            
+            chartInstance = new Chart(ctx, {
+                type: 'line',
                 data: {
-                    labels: historico.map(d => new Date(d.timestamp).toLocaleTimeString()),
-                    datasets: [
-                        {
-                            label: 'Turbidez',
-                            data: historico.map(d => d.turbidez),
-                            backgroundColor: 'rgba(255, 99, 132, 0.5)'
+                    labels: historico.map(d => formatarData(d.timestamp)),
+                    datasets: [{
+                        label: 'Valor do Sensor',
+                        data: historico.map(d => d.valor_sensor),
+                        borderColor: '#2c3e50',
+                        backgroundColor: function(context) {
+                            const valor = context.dataset.data[context.dataIndex];
+                            if (valor > 500) return '#dc354566';
+                            if (valor > 300) return '#ff8c0066';
+                            if (valor > 150) return '#ffd70066';
+                            return '#28a74566';
                         },
-                        {
-                            label: 'TDS (Sólidos Dissolvidos)',
-                            data: historico.map(d => d.tds),
-                            backgroundColor: 'rgba(54, 162, 235, 0.5)'
-                        }
-                    ]
+                        borderWidth: 2,
+                        fill: true,
+                        tension: 0.1,
+                        pointRadius: 3,
+                        pointBackgroundColor: '#2c3e50'
+                    }]
                 },
                 options: {
                     responsive: true,
+                    maintainAspectRatio: false,
                     scales: {
-                        y: { beginAtZero: true }
+                        y: { 
+                            beginAtZero: true,
+                            title: {
+                                display: true,
+                                text: 'Valor do Sensor (ppm)'
+                            },
+                            grid: {
+                                color: '#e0e0e0'
+                            }
+                        },
+                        x: {
+                            title: {
+                                display: true,
+                                text: 'Data/Hora da Leitura'
+                            },
+                            grid: {
+                                display: false
+                            },
+                            ticks: {
+                                maxRotation: 45,
+                                minRotation: 45
+                            }
+                        }
+                    },
+                    plugins: {
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    return `Valor: ${context.parsed.y.toFixed(2)} ppm`;
+                                }
+                            }
+                        },
+                        annotation: {
+                            annotations: {
+                                linha150: {
+                                    type: 'line',
+                                    yMin: 150,
+                                    yMax: 150,
+                                    borderColor: '#28a745',
+                                    borderWidth: 2,
+                                    borderDash: [5, 5]
+                                },
+                                linha300: {
+                                    type: 'line',
+                                    yMin: 300,
+                                    yMax: 300,
+                                    borderColor: '#ffd700',
+                                    borderWidth: 2,
+                                    borderDash: [5, 5]
+                                },
+                                linha500: {
+                                    type: 'line',
+                                    yMin: 500,
+                                    yMax: 500,
+                                    borderColor: '#ff8c00',
+                                    borderWidth: 2,
+                                    borderDash: [5, 5]
+                                }
+                            }
+                        }
                     }
                 }
             });
         }
         
-        carregarDados();
+        // Carrega os dados quando a página é aberta
+        document.addEventListener('DOMContentLoaded', carregarDados);
     </script>
 </body>
 </html>
