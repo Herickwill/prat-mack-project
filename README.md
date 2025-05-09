@@ -41,7 +41,7 @@ flowchart LR
     B --> C[AWS Lambda]
     C --> D[DynamoDB]
     C -->|Alerta| E[SNS Topic]
-    D --> F[S3 Dashboard (Static Hosting)]
+    D --> F["S3 Dashboard (Static Hosting)"]
 ```
 
 1. O dispositivo publica no tópico `esp32/tds` via MQTT.
