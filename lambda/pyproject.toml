@@ -1,0 +1,25 @@
+[tool.poetry]
+name = "water-quality-lambda"
+version = "0.1.0"
+description = "Lambda de ingestão de dados TDS"
+authors = ["Herick", "Emilly", "Gustavo"]
+license = "MIT"
+
+# Instruí o Poetry a tratar only a pasta `app` como pacote
+packages = [
+  { include = "app" }
+]
+
+[tool.poetry.dependencies]
+python = "^3.11"
+boto3   = "^1.26"
+
+[tool.poetry.dev-dependencies]
+pytest = "^7.0"
+
+[tool.poetry.scripts]
+monitor = "app.handler:lambda_handler"
+
+[build-system]
+requires    = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
