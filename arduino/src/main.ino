@@ -1,29 +1,24 @@
-// Código do ESP32 com leitura do sensor TDS e envio via MQTT
 #include <WiFi.h>
 #include <WiFiClientSecure.h>
 #include <PubSubClient.h>
 #include <time.h>
 
+#include "certificado.h"
+#include "chave_privada.h"
+#include "amazon_root_ca.h"
+
 // ======== Wi-Fi Config ========
-const char* ssid = "SSID_WIFI";
-const char* password = "SENHA_WIFI";
+const char* ssid = "OMITIDO";
+const char* password = "OMITIDO";
 
 // ======== AWS IoT Config ========
 const char* mqtt_server = "a2nrghdakdc223-ats.iot.sa-east-1.amazonaws.com";
 const int mqtt_port = 8883;
 const char* mqtt_topic = "esp32/tds";
 
-// Certificado do dispositivo (.pem.crt)
-const char* certificate_pem_crt = "OMITIDO";
-
-// Chave privada (.pem.key)
-const char* private_pem_key = "OMITIDO";
-
-// Amazon Root CA (.pem)
-const char* amazon_root_ca = "OMITIDO";
-
 // ======== TDS Config ========
 const int tdsPin = 34; // GPIO34 (D34)
+const int ledPin = 25;// GPIO25 para o Atuador
 float vref = 3.3;       // tensão de referência
 int adcResolution = 4095; // resolução de 12 bits
 
@@ -48,6 +43,9 @@ void setup() {
   Serial.begin(115200);
   analogReadResolution(12);
 
+  pinMode(ledPin, OUTPUT);
+  digitalWrite(ledPin, LOW); // começa desligado
+
   WiFi.begin(ssid, password);
   Serial.print("Conectando ao Wi-Fi");
   while (WiFi.status() != WL_CONNECTED) {
@@ -57,7 +55,6 @@ void setup() {
   Serial.println("\nWi-Fi conectado!");
   Serial.println(WiFi.localIP());
 
-  // Configurar NTP (UTC-3 para Brasil)
   configTime(-3 * 3600, 0, "pool.ntp.org", "time.nist.gov");
   Serial.print("Aguardando sincronização NTP");
   time_t now = time(nullptr);
@@ -81,7 +78,9 @@ void loop() {
   client.loop();
 
   static unsigned long lastRead = 0;
-  if (millis() - lastRead > 30000) { // a cada 30 segundos
+  static bool isPolluted = false;
+
+  if (millis() - lastRead > 30000) {
     int raw = analogRead(tdsPin);
     float voltage = raw * (vref / adcResolution);
     float tdsValue = (133.42 * voltage * voltage * voltage
@@ -99,6 +98,19 @@ void loop() {
     Serial.println(payload);
     client.publish(mqtt_topic, payload.c_str());
 
+    // Atualiza estado de poluição
+    isPolluted = (tdsValue > 150);
+
     lastRead = millis();
+  }
+
+  // Piscar LED se estiver poluído
+  if (isPolluted) {
+    digitalWrite(ledPin, HIGH);
+    delay(200);
+    digitalWrite(ledPin, LOW);
+    delay(200);
+  } else {
+    digitalWrite(ledPin, LOW); // LED desligado se não estiver poluído
   }
 }
